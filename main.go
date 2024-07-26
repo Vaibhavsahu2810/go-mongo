@@ -103,12 +103,14 @@ func main() {
 		if err != nil {
 			return c.Status(500).SendString(err.Error())
 		}
+
 		collection := mg.db.Collection("employees")
 		employee := new(Employee)
 
 		if err := c.BodyParser(employee); err != nil {
 			return c.Status(500).SendString(err.Error())
 		}
+
 		filter := bson.D{{Key: "_id", Value: employeeId}}
 		update := bson.D{
 			{Key: "$set", Value: bson.D{
@@ -117,19 +119,20 @@ func main() {
 				{Key: "salary", Value: employee.Salary},
 			}},
 		}
-		err := collection.FindOneAndUpdate(c.Context(), filter, update).Err()
 
-		if err != nil {
-			if err == mongo.ErrNoDocuments {
+		updateErr := collection.FindOneAndUpdate(c.Context(), filter, update).Err()
+		if updateErr != nil {
+			if updateErr == mongo.ErrNoDocuments {
 				return c.Status(404).SendString("Employee not found")
 			}
-			return c.Status(500).SendString(err.Error())
+			return c.Status(500).SendString(updateErr.Error())
 		}
 
 		employee.ID = id
 
 		return c.Status(200).JSON(employee)
 	})
+
 	app.Delete("/employee/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
