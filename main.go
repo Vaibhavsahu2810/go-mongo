@@ -20,7 +20,7 @@ type MongoInstance struct {
 var mg MongoInstance
 
 const dbName = "mongo-go"
-const mongoUrl = "mongodb://localhost:27017" + dbName
+const mongoURI = "mongodb://localhost:27017/" + dbName
 
 type Employee struct {
 	ID     string  `json:"id,omitempty" bson:"_id,omitempty"`
@@ -30,7 +30,7 @@ type Employee struct {
 }
 
 func Connect() error {
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoUrl))
+	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatal(err)
 	}
