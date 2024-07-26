@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -95,4 +96,61 @@ func main() {
 		return c.Status(201).JSON(createdEmployee)
 
 	})
+	app.Put("/employee/:id", func(c *fiber.Ctx) error {
+		id := c.Params("id")
+
+		employeeId, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return c.Status(500).SendString(err.Error())
+		}
+		collection := mg.db.Collection("employees")
+		employee := new(Employee)
+
+		if err := c.BodyParser(employee); err != nil {
+			return c.Status(500).SendString(err.Error())
+		}
+		filter := bson.D{{Key: "_id", Value: employeeId}}
+		update := bson.D{
+			{Key: "$set", Value: bson.D{
+				{Key: "name", Value: employee.Name},
+				{Key: "age", Value: employee.Age},
+				{Key: "salary", Value: employee.Salary},
+			}},
+		}
+		err := collection.FindOneAndUpdate(c.Context(), filter, update).Err()
+
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				return c.Status(404).SendString("Employee not found")
+			}
+			return c.Status(500).SendString(err.Error())
+		}
+
+		employee.ID = id
+
+		return c.Status(200).JSON(employee)
+	})
+	app.Delete("/employee/:id", func(c *fiber.Ctx) error {
+		id := c.Params("id")
+
+		employeeId, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return c.Status(500).SendString(err.Error())
+		}
+
+		filter := bson.D{{
+			Key:   "_id",
+			Value: employeeId,
+		}}
+		collection := mg.db.Collection("employees")
+		err = collection.FindOneAndDelete(c.Context(), filter).Err()
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				return c.Status(404).SendString("Employee not found")
+			}
+			return c.Status(500).SendString(err.Error())
+		}
+		return c.Status(200).SendString("Employee deleted")
+	})
+	log.Fatal(app.Listen(":3000"))
 }
